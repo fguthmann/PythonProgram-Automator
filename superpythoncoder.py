@@ -1,6 +1,9 @@
 from openai import OpenAI
 import subprocess
 import random
+from colorama import init, Fore
+from tqdm import tqdm
+
 
 client = OpenAI(api_key='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')
 
@@ -44,28 +47,27 @@ def create_code_file(file_path = "generatedcode.py", max_attempts = 5):
 
     user_input = communicate_api_first_connection()
     conversation_history.append({"role": "user", "content": user_input})
-    command = ["python", file_path]
 
-    for attempt in range(max_attempts):
+    for attempt in tqdm(range(max_attempts), desc="Generating code"):
         try:
             code = generate_code(conversation_history)
             extracted_code = extract_code_block(code, conversation_history)
             with open(file_path, 'w') as file:
                 file.write(extracted_code)
-
-            result = subprocess.run(command, capture_output=True, text=True)
+            subprocess.run(['black', file_path], check=True, capture_output=True, text=True)
+            result = subprocess.run(['python', file_path], capture_output=True, text=True)
             if result.returncode == 0:
-                print("Code creation completed successfully !")
+                print(Fore.LIGHTGREEN_EX + "Code creation completed successfully !")
                 subprocess.call(["open", file_path])
                 return
             else:
                 error = result.stderr
                 if attempt == max_attempts - 1:
-                    print("Maximum attempts reached. Last error:")
-                    print(error)
+                    print(Fore.LIGHTRED_EX + "Maximum attempts reached. Last error:")
+                    print(Fore.LIGHTRED_EX + error)
                     return
                 else:
-                    print("Error running generated code! Error: " + error)
+                    print(Fore.LIGHTRED_EX + "Error running generated code! Error: " + error)
                     code_with_error = extracted_code + "\nThis is he old code you gave me, please fix it and returned" \
                                                        " me the new code with 5 unity tests such that following error" \
                                                        " is fixed\n\n" + error
@@ -78,8 +80,8 @@ def create_code_file(file_path = "generatedcode.py", max_attempts = 5):
 
 def communicate_api_first_connection():
     # System message and user input
-    print("Tell me, which program would you like me to code for you? If you don't have an idea,just press enter and "
-          "I will choose a random program to code.")
+    print(Fore.LIGHTBLUE_EX + "Tell me, which program would you like me to code for you? If you don't have an idea,"
+                              "just press enter and I will choose a random program to code.")
     user_input = input()
 
     # Choose a random program if no input is given
@@ -93,5 +95,6 @@ def communicate_api_first_connection():
 
 
 if __name__ == "__main__":
+    init(autoreset=True)
     create_code_file()
 
