@@ -36,7 +36,7 @@ def generate_code(conversation_history):
     return response.choices[0].message.content
 
 
-def create_code_file():
+def create_code_file(file_path = "generatedcode.py", max_attempts = 5):
     conversation_history = [
         {"role": "system", "content": "Tell me, which program would you like me to code for you? If you don't have "
                                       "an idea, just press enter and I will choose a random program to code"}
@@ -44,10 +44,7 @@ def create_code_file():
 
     user_input = communicate_api_first_connection()
     conversation_history.append({"role": "user", "content": user_input})
-
-    file_path = "generatedcode.py"
     command = ["python", file_path]
-    max_attempts = 5
 
     for attempt in range(max_attempts):
         try:
@@ -63,24 +60,20 @@ def create_code_file():
                 return
             else:
                 error = result.stderr
-                print("Error running generated code! Error: " + error)
-                code_with_error = extracted_code + "\nThis is he old code you gave me, please fix it and returned me " \
-                                                   "the new code with 5 unity tests such that following error " \
-                                                   "is fixed\n\n" + error
-                conversation_history.append({"role": "user", "content": code_with_error})
+                if attempt == max_attempts - 1:
+                    print("Maximum attempts reached. Last error:")
+                    print(error)
+                    return
+                else:
+                    print("Error running generated code! Error: " + error)
+                    code_with_error = extracted_code + "\nThis is he old code you gave me, please fix it and returned" \
+                                                       " me the new code with 5 unity tests such that following error" \
+                                                       " is fixed\n\n" + error
+                    conversation_history.append({"role": "user", "content": code_with_error})
 
         except subprocess.CalledProcessError as e:
-            print(f"Error encountered: {e}")
-            if attempt < max_attempts - 1:
-                user_input = str(e)
-                conversation_history.append({"role": "user", "content": user_input})
-            else:
-                print("Maximum attempts reached. Last error:")
-                print(e)
-                return
-    error = result.stderr
-    print("Maximum attempts reached. Last error:")
-    print(error)
+            print(e)
+            return
 
 
 def communicate_api_first_connection():
